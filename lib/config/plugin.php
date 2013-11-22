@@ -1,10 +1,11 @@
 <?php
+
 return array(
-    'name'        => 'Альфа банк',
+    'name' => 'Альфа банк',
     'description' => 'Оплата Банковскими картами через альфа банк',
-    'icon'        => 'img/alfabank16.png',
-    'logo'        => 'img/alfabank.png',
-    'vendor' => 903438,
-    'version' => '1.0.0',
+    'icon' => 'img/alfabank16.png',
+    'logo' => 'img/alfabank.png',
+    'vendor' => '985310',
+    'version' => '1.0.1',
     'type' => waPayment::TYPE_ONLINE,
 );
