@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * @author dixite.ru
@@ -9,124 +10,111 @@
  * @property-read string $password
  * @property-read string $sandbox
  */
-class alfabankPayment extends waPayment implements waIPayment
-{
+class alfabankPayment extends waPayment implements waIPayment {
+
     private $url = 'https://engine.paymentgate.ru/payment/rest/';
     private $test_url = 'https://test.paymentgate.ru/testpayment/rest/';
     private $order_id;
-
     private $currency = array(
-    '840' => 'USD',
-    '980' => 'UAH',
-    '810' => 'RUB',
-    '946' => 'RON',
-    '398' => 'KZT',
-    '417' => 'KGS',
-    '392' => 'JPY',
-    '826' => 'GBR',
-    '978' => 'EUR',
-    '156' => 'CNY',
-    '974' => 'BYR',
+        '840' => 'USD',
+        '980' => 'UAH',
+        '810' => 'RUB',
+        '946' => 'RON',
+        '398' => 'KZT',
+        '417' => 'KGS',
+        '392' => 'JPY',
+        '826' => 'GBR',
+        '978' => 'EUR',
+        '156' => 'CNY',
+        '974' => 'BYR',
     );
 
-    public function allowedCurrency()
-    {
+    public function allowedCurrency() {
         return $this->currency;
     }
 
-
-    public function payment($payment_form_data, $order_data, $auto_submit = false)
-    {
+    public function payment($payment_form_data, $order_data, $auto_submit = false) {
         if (!in_array($order_data['currency_id'], $this->allowedCurrency())) {
             throw new waException('Ошибка оплаты. Валюта не поддерживается');
         }
-        
-        if($this->sandbox) {
-            $url = $this->test_url.'register.do';  
-        } else {
-            $url = $this->url.'register.do';
-        }
-        $params = base64_encode(json_encode(array('app_id'=>$this->app_id,'merchant_id'=>$this->merchant_id)));        
-        
-        $returnUrl = $this->getRelayUrl().'?params='.$params;
-        
-        $currency_id = $order_data['currency_id'];
-        $currency = array_search($currency_id,$this->currency);
-        
-        $data = array(
-                'userName' => $this->userName,
-                'password' => $this->password,
-                'orderNumber' => $order_data['order_id'],
-                'amount' => floor($order_data['amount']*100),
-                'currency' => $currency,
-                'returnUrl' => $returnUrl,
-                
-                );  
 
-        $response = $this->sendData($url,$data);
-        if(isset($json['errorCode']) && $json['errorCode']) {
-           throw new waPaymentException('Ошибка оплаты. '.$json['errorMessage']);             
+        if ($this->sandbox) {
+            $url = $this->test_url . 'register.do';
+        } else {
+            $url = $this->url . 'register.do';
         }
-        
-        
+        $params = base64_encode(json_encode(array('app_id' => $this->app_id, 'merchant_id' => $this->merchant_id)));
+
+        $returnUrl = $this->getRelayUrl() . '?params=' . $params;
+
+        $currency_id = $order_data['currency_id'];
+        $currency = array_search($currency_id, $this->currency);
+
+        $data = array(
+            'userName' => $this->userName,
+            'password' => $this->password,
+            'orderNumber' => $order_data['order_id'] . '_' . time(),
+            'amount' => floor($order_data['amount'] * 100),
+            'currency' => $currency,
+            'returnUrl' => $returnUrl,
+        );
+
+        $response = $this->sendData($url, $data);
+        if (isset($json['errorCode']) && $json['errorCode']) {
+            throw new waPaymentException('Ошибка оплаты. ' . $json['errorMessage']);
+        }
+
+        print_r($response);
         $formUrl = $response['formUrl'];
 
         $view = wa()->getView();
         $view->assign('form_url', $formUrl);
         $view->assign('auto_submit', $auto_submit);
-        return $view->fetch($this->path.'/templates/payment.html');
+        return $view->fetch($this->path . '/templates/payment.html');
     }
 
-
-
-    protected function callbackInit($request)
-    {               
+    protected function callbackInit($request) {
         if (!empty($request['orderId'])) {
-            
-            $params = json_decode(base64_decode($request['params']),true);
+            $params = json_decode(base64_decode($request['params']), true);
             $this->app_id = $params['app_id'];
-            $this->merchant_id = $params['merchant_id'];           
+            $this->merchant_id = $params['merchant_id'];
             $this->order_id = $request['orderId'];
         } elseif (!empty($request['app_id'])) {
             $this->app_id = $request['app_id'];
         }
-        
+
         return parent::callbackInit($request);
     }
-    
 
+    protected function callbackHandler($request) {
 
-    protected function callbackHandler($request)
-    {
-        
         if (!$this->order_id) {
             throw new waPaymentException('Ошибка. Не верный номер заказа');
         }
-            
-        if($this->sandbox) {
-            $url = $this->test_url.'getOrderStatus.do';  
+
+        if ($this->sandbox) {
+            $url = $this->test_url . 'getOrderStatus.do';
         } else {
-            $url = $this->url.'getOrderStatus.do'; 
+            $url = $this->url . 'getOrderStatus.do';
         }
 
-            
+
         $params = array(
             'userName' => $this->userName,
             'password' => $this->password,
             'orderId' => $this->order_id,
-
-        );  
-        $request = $this->sendData($url,$params);        
+        );
+        $request = $this->sendData($url, $params);
         $transaction_data = $this->formalizeData($request);
 
 
-        if($request['ErrorCode']==0 && $request['OrderStatus']==2) {
+        if ($request['ErrorCode'] == 0 && $request['OrderStatus'] == 2) {
             $message = $request['ErrorMessage'];
             $app_payment_method = self::CALLBACK_PAYMENT;
             $transaction_data['state'] = self::STATE_CAPTURED;
             $url = $this->getAdapter()->getBackUrl(waAppPayment::URL_SUCCESS, $transaction_data);
         } else {
-            switch ($request['ErrorCode']) {                
+            switch ($request['ErrorCode']) {
 
                 case 2:
                     $message = 'Заказ отклонен по причине ошибки в реквизитах платежа.';
@@ -153,7 +141,6 @@ class alfabankPayment extends waPayment implements waIPayment
                     $url = $this->getAdapter()->getBackUrl(waAppPayment::URL_FAIL, $transaction_data);
                     break;
             }
-            
         }
 
 
@@ -162,15 +149,14 @@ class alfabankPayment extends waPayment implements waIPayment
         self::addTransactionData($transaction_data['id'], $result);
 
         return array(
-                    'template' => $this->path.'/templates/callback.html',
-                    'back_url' => $url,
-                    'message'  => $message,
-                );        
+            'template' => $this->path . '/templates/callback.html',
+            'back_url' => $url,
+            'message' => $message,
+        );
     }
-    
-    private function sendData($url, $data)
-    {
-        
+
+    private function sendData($url, $data) {
+
         if (!extension_loaded('curl') || !function_exists('curl_init')) {
             throw new waException('PHP расширение cURL не доступно');
         }
@@ -178,18 +164,18 @@ class alfabankPayment extends waPayment implements waIPayment
         if (!($ch = curl_init())) {
             throw new waException('curl init error');
         }
-        
+
         if (curl_errno($ch) != 0) {
-            throw new waException('Ошибка инициализации curl: '.curl_errno($ch));
+            throw new waException('Ошибка инициализации curl: ' . curl_errno($ch));
         }
-        
+
         $postdata = array();
-        
-        foreach($data as $name => $value) {
+
+        foreach ($data as $name => $value) {
             $postdata[] = "$name=$value";
-        }     
-        
-        $post = implode('&',$postdata); 
+        }
+
+        $post = implode('&', $postdata);
 
         @curl_setopt($ch, CURLOPT_URL, $url);
         @curl_setopt($ch, CURLOPT_POST, 1);
@@ -203,7 +189,7 @@ class alfabankPayment extends waPayment implements waIPayment
         $response = @curl_exec($ch);
         $app_error = null;
         if (curl_errno($ch) != 0) {
-            $app_error = 'Ошибка curl: '.curl_errno($ch);
+            $app_error = 'Ошибка curl: ' . curl_errno($ch);
         }
         curl_close($ch);
         if ($app_error) {
@@ -212,30 +198,31 @@ class alfabankPayment extends waPayment implements waIPayment
         if (empty($response)) {
             throw new waException('Пустой ответ от сервера');
         }
-        
-        $json = json_decode($response,true);
 
-        if(!is_array($json)) {
-            throw new waException('Ошибка оплаты. '.$response);
+        $json = json_decode($response, true);
+
+        if (!is_array($json)) {
+            throw new waException('Ошибка оплаты. ' . $response);
         }
-        
-        
-   
+
+
+
         return $json;
     }
 
-    protected function formalizeData($transaction_raw_data)
-    {
+    protected function formalizeData($transaction_raw_data) {
         $currency_id = $transaction_raw_data['currency'];
-        
+
         $transaction_data = parent::formalizeData($transaction_raw_data);
         $transaction_data['native_id'] = $this->order_id;
-        $transaction_data['order_id'] = $transaction_raw_data['OrderNumber'];
+        $order = explode('_', $transaction_raw_data['OrderNumber']);
+        $transaction_data['order_id'] = $order[0];
         $transaction_data['currency_id'] = $this->currency[$currency_id];
         $transaction_data['amount'] = $transaction_raw_data['Amount'];
-        //$transaction_data['view_data'] = 'view_data';
+        $transaction_data['view_data'] = json_encode($transaction_raw_data);
 
-        
+
         return $transaction_data;
     }
+
 }
