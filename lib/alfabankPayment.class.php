@@ -60,11 +60,10 @@ class alfabankPayment extends waPayment implements waIPayment {
         );
 
         $response = $this->sendData($url, $data);
-        if (isset($json['errorCode']) && $json['errorCode']) {
-            throw new waPaymentException('Ошибка оплаты. ' . $json['errorMessage']);
+        if (isset($response['errorCode']) && $response['errorCode']) {
+            throw new waPaymentException('Ошибка оплаты. ' . $response['errorMessage']);
         }
 
-        print_r($response);
         $formUrl = $response['formUrl'];
 
         $view = wa()->getView();
