@@ -2,7 +2,7 @@
 
 /**
  *
- * @author dixite.ru
+ * @author wa-plugins.ru
  * @name AlfaBank
  * @description AlfaBank Payments
  *
@@ -81,7 +81,6 @@ class alfabankPayment extends waPayment implements waIPayment {
         } elseif (!empty($request['app_id'])) {
             $this->app_id = $request['app_id'];
         }
-
         return parent::callbackInit($request);
     }
 
@@ -96,7 +95,6 @@ class alfabankPayment extends waPayment implements waIPayment {
         } else {
             $url = $this->url . 'getOrderStatus.do';
         }
-
 
         $params = array(
             'userName' => $this->userName,
@@ -204,8 +202,6 @@ class alfabankPayment extends waPayment implements waIPayment {
             throw new waException('Ошибка оплаты. ' . $response);
         }
 
-
-
         return $json;
     }
 
@@ -218,8 +214,6 @@ class alfabankPayment extends waPayment implements waIPayment {
         $transaction_data['order_id'] = $order[0];
         $transaction_data['currency_id'] = $this->currency[$currency_id];
         $transaction_data['amount'] = $transaction_raw_data['Amount'];
-        $transaction_data['view_data'] = json_encode($transaction_raw_data);
-
 
         return $transaction_data;
     }
