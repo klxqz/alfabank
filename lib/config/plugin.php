@@ -6,6 +6,6 @@ return array(
     'icon' => 'img/alfabank16.png',
     'logo' => 'img/alfabank.png',
     'vendor' => '985310',
-    'version' => '1.0.5',
+    'version' => '1.1.0',
     'type' => waPayment::TYPE_ONLINE,
 );

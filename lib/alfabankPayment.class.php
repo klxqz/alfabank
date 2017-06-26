@@ -13,7 +13,7 @@
 class alfabankPayment extends waPayment implements waIPayment {
 
     private $url = 'https://engine.paymentgate.ru/payment/rest/';
-    private $test_url = 'https://test.paymentgate.ru/testpayment/rest/';
+    private $test_url = 'https://web.rbsuat.com/ab/rest/';
     private $order_id;
     private $currency = array(
         '840' => 'USD',
