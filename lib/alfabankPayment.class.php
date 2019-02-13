@@ -10,7 +10,8 @@
  * @property-read string $password
  * @property-read string $sandbox
  */
-class alfabankPayment extends waPayment implements waIPayment {
+class alfabankPayment extends waPayment implements waIPayment
+{
 
     private $url = 'https://engine.paymentgate.ru/payment/rest/';
     private $test_url = 'https://web.rbsuat.com/ab/rest/';
@@ -29,19 +30,30 @@ class alfabankPayment extends waPayment implements waIPayment {
         '974' => 'BYR',
     );
 
-    public function allowedCurrency() {
+    public function allowedCurrency()
+    {
         return $this->currency;
     }
 
-    public function payment($payment_form_data, $order_data, $auto_submit = false) {
+    private function getUrl()
+    {
+        if ($this->sandbox) {
+            return $this->test_url;
+        } else {
+            return $this->url;
+        }
+    }
+
+    public function payment($payment_form_data, $order_data, $auto_submit = false)
+    {
         if (!in_array($order_data['currency_id'], $this->allowedCurrency())) {
             throw new waException('Ошибка оплаты. Валюта не поддерживается');
         }
 
-        if ($this->sandbox) {
-            $url = $this->test_url . 'register.do';
+        if ($this->paynent_mode == 1) {
+            $url = $this->getUrl() . 'register.do';
         } else {
-            $url = $this->url . 'register.do';
+            $url = $this->getUrl() . 'registerPreAuth.do';
         }
         $params = base64_encode(json_encode(array('app_id' => $this->app_id, 'merchant_id' => $this->merchant_id)));
 
@@ -72,7 +84,8 @@ class alfabankPayment extends waPayment implements waIPayment {
         return $view->fetch($this->path . '/templates/payment.html');
     }
 
-    protected function callbackInit($request) {
+    protected function callbackInit($request)
+    {
         if (!empty($request['orderId'])) {
             $params = json_decode(base64_decode($request['params']), true);
             $this->app_id = $params['app_id'];
@@ -84,7 +97,8 @@ class alfabankPayment extends waPayment implements waIPayment {
         return parent::callbackInit($request);
     }
 
-    protected function callbackHandler($request) {
+    protected function callbackHandler($request)
+    {
 
         if (!$this->order_id) {
             throw new waPaymentException('Ошибка. Не верный номер заказа');
@@ -152,7 +166,8 @@ class alfabankPayment extends waPayment implements waIPayment {
         );
     }
 
-    private function sendData($url, $data, $ssl_version = 0) {
+    private function sendData($url, $data, $ssl_version = 0)
+    {
 
         if (!extension_loaded('curl') || !function_exists('curl_init')) {
             throw new waException('PHP расширение cURL не доступно');
@@ -206,7 +221,8 @@ class alfabankPayment extends waPayment implements waIPayment {
         return $json;
     }
 
-    protected function formalizeData($transaction_raw_data) {
+    protected function formalizeData($transaction_raw_data)
+    {
         $currency_id = $transaction_raw_data['currency'];
 
         $transaction_data = parent::formalizeData($transaction_raw_data);
